@@ -1,6 +1,7 @@
 import { ArrowLeft, Briefcase, Search, Eye } from 'lucide-react';
-import { mockScholarships } from '../data/mockData';
-import { useState } from 'react';
+import { getScholarships } from '../api/scholarships';
+import { Scholarship } from '../types/scholarship';
+import { useState, useEffect } from 'react';
 
 interface EmploymentProgramsPageProps {
   onScholarshipClick: (id: string) => void;
@@ -8,20 +9,32 @@ interface EmploymentProgramsPageProps {
 }
 
 export default function EmploymentProgramsPage({ onScholarshipClick, onBack }: EmploymentProgramsPageProps) {
+  const [scholarships, setScholarships] = useState<Scholarship[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const employmentPrograms = mockScholarships.filter(
-    (scholarship) =>
-      scholarship.title.includes('취업') ||
-      scholarship.summary.includes('취업') ||
-      scholarship.organization.includes('취업')
-  );
+  useEffect(() => {
+    async function fetchScholarships() {
+      try {
+        setLoading(true);
+        const data = await getScholarships({ category: 'all', search: searchTerm });
+        const employmentPrograms = data.filter(
+          (scholarship) =>
+            scholarship.title.includes('취업') ||
+            scholarship.summary.includes('취업') ||
+            scholarship.organization.includes('취업')
+        );
+        setScholarships(employmentPrograms);
+      } catch (error) {
+        console.error('장학금 목록 조회 실패:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchScholarships();
+  }, [searchTerm]);
 
-  const filteredScholarships = employmentPrograms.filter((item) => {
-    const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.summary.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
-  });
+  const filteredScholarships = scholarships;
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -30,6 +43,14 @@ export default function EmploymentProgramsPage({ onScholarshipClick, onBack }: E
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}.${month}.${day}`;
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-gray-600">로딩 중...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

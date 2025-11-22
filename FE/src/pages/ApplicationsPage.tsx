@@ -1,6 +1,8 @@
 import { ArrowLeft, Calendar, TrendingUp, Award, Target } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import ScholarshipCard from '../components/ScholarshipCard';
-import { mockScholarships } from '../data/mockData';
+import { getScholarships } from '../api/scholarships';
+import { Scholarship } from '../types/scholarship';
 
 interface ApplicationsPageProps {
   onScholarshipClick: (id: string) => void;
@@ -8,8 +10,43 @@ interface ApplicationsPageProps {
 }
 
 export default function ApplicationsPage({ onScholarshipClick, onBack }: ApplicationsPageProps) {
-  const availableScholarships = mockScholarships.filter(s => s.category === 'scholarship');
-  const availableCompetitions = mockScholarships.filter(s => s.category === 'competition');
+  const [scholarships, setScholarships] = useState<Scholarship[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchScholarships() {
+      try {
+        setLoading(true);
+        const data = await getScholarships({ category: 'all' });
+        setScholarships(data);
+      } catch (error) {
+        console.error('장학금 목록 조회 실패:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchScholarships();
+  }, []);
+
+  const availableScholarships = scholarships.filter(s => s.category === 'scholarship');
+  const availableCompetitions = scholarships.filter(s => s.category === 'competition');
+  
+  // 마감 임박 계산 (7일 이내)
+  const deadlineSoon = scholarships.filter(s => {
+    const deadline = new Date(s.deadline);
+    const now = new Date();
+    const diffTime = deadline.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays >= 0 && diffDays <= 7;
+  });
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-gray-600">로딩 중...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -67,7 +104,7 @@ export default function ApplicationsPage({ onScholarshipClick, onBack }: Applica
             <div className="p-2 bg-orange-500 rounded-xl">
               <Calendar className="w-6 h-6 text-white" />
             </div>
-            <span className="text-3xl font-black text-orange-600">3건</span>
+            <span className="text-3xl font-black text-orange-600">{deadlineSoon.length}건</span>
           </div>
           <h3 className="text-lg font-bold text-gray-900 mb-1">마감 임박</h3>
           <p className="text-sm text-gray-600">서둘러 신청하세요</p>

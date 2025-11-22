@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ScholarshipCard from '../components/ScholarshipCard';
-import { mockScholarships } from '../data/mockData';
+import { getSavedScholarships } from '../api/scholarships';
+import { Scholarship } from '../types/scholarship';
 import { BookmarkCheck, User, Edit2, Award, Trophy, Calendar } from 'lucide-react';
 
 interface SavedPageProps {
@@ -9,8 +10,23 @@ interface SavedPageProps {
 
 export default function SavedPage({ onScholarshipClick }: SavedPageProps) {
   const [activeTab, setActiveTab] = useState<'saved' | 'profile'>('saved');
+  const [savedScholarships, setSavedScholarships] = useState<Scholarship[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const savedScholarships = mockScholarships.slice(0, 3);
+  useEffect(() => {
+    async function fetchSavedScholarships() {
+      try {
+        setLoading(true);
+        const data = await getSavedScholarships();
+        setSavedScholarships(data);
+      } catch (error) {
+        console.error('저장한 장학금 조회 실패:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchSavedScholarships();
+  }, []);
 
   const profileData = {
     name: '김학생',
@@ -21,6 +37,14 @@ export default function SavedPage({ onScholarshipClick }: SavedPageProps) {
     income: '4~6분위',
     certificates: ['TOEIC 850점', '정보처리기사'],
   };
+
+  if (loading && activeTab === 'saved') {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-gray-600">로딩 중...</div>
+      </div>
+    );
+  }
 
   if (activeTab === 'profile') {
     return (

@@ -32,3 +32,20 @@ export async function getResume(studentId: string): Promise<ResumeResponse> {
     method: 'GET',
   });
 }
+
+export interface ResumeWriteData {
+  name: string;
+  major: string;
+  grade: string;
+  certificates: string;
+}
+
+export async function writeResume(
+  studentId: string,
+  data: ResumeWriteData,
+): Promise<ResumeResponse> {
+  return apiRequest<ResumeResponse>(`/api/students/${studentId}/resume/write`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}

@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import PersonalizedBanner from '../components/PersonalizedBanner';
 import ScholarshipSlider from '../components/ScholarshipSlider';
-import { mockScholarships } from '../data/mockData';
+import { getScholarships } from '../api/scholarships';
+import { Scholarship } from '../types/scholarship';
 import { Clock, Award, Bell, GraduationCap, Award as Certificate, Briefcase, List } from 'lucide-react';
 
 interface HomePageProps {
@@ -37,8 +39,41 @@ const quickAccessItems = [
 ];
 
 export default function HomePage({ onScholarshipClick, onNavigate, studentId }: HomePageProps) {
-  const newScholarships = mockScholarships.filter((s) => s.isNew);
-  const deadlineSoon = mockScholarships.slice(0, 3);
+  const [scholarships, setScholarships] = useState<Scholarship[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchScholarships() {
+      try {
+        setLoading(true);
+        const data = await getScholarships({ category: 'all' });
+        setScholarships(data);
+      } catch (error) {
+        console.error('장학금 목록 조회 실패:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchScholarships();
+  }, []);
+
+  const newScholarships = scholarships.filter((s) => s.isNew);
+  // 마감일 기준으로 정렬하여 임박한 순서대로 표시
+  const deadlineSoon = [...scholarships]
+    .sort((a, b) => {
+      const dateA = new Date(a.deadline).getTime();
+      const dateB = new Date(b.deadline).getTime();
+      return dateA - dateB;
+    })
+    .slice(0, 6);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-gray-600">로딩 중...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-10">
@@ -95,7 +130,7 @@ export default function HomePage({ onScholarshipClick, onNavigate, studentId }: 
           <span className="px-3 py-1.5 bg-red-50 text-red-600 text-xs font-bold rounded-lg border border-red-200">HOT</span>
         </div>
         <ScholarshipSlider
-          scholarships={mockScholarships.slice(0, 6)}
+          scholarships={deadlineSoon}
           onScholarshipClick={onScholarshipClick}
         />
       </section>

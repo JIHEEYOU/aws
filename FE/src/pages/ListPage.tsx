@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ScholarshipCard from '../components/ScholarshipCard';
-import { mockScholarships } from '../data/mockData';
+import { getScholarships } from '../api/scholarships';
+import { Scholarship } from '../types/scholarship';
 import { SlidersHorizontal, X } from 'lucide-react';
 
 interface ListPageProps {
@@ -9,13 +10,30 @@ interface ListPageProps {
 }
 
 export default function ListPage({ category, onScholarshipClick }: ListPageProps) {
+  const [scholarships, setScholarships] = useState<Scholarship[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedGrade, setSelectedGrade] = useState<string[]>([]);
   const [selectedMajor, setSelectedMajor] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<'recent' | 'deadline' | 'popular'>('recent');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredScholarships = mockScholarships
-    .filter((s) => s.category === category)
+  useEffect(() => {
+    async function fetchScholarships() {
+      try {
+        setLoading(true);
+        const data = await getScholarships({ category, search: searchQuery });
+        setScholarships(data);
+      } catch (error) {
+        console.error('장학금 목록 조회 실패:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchScholarships();
+  }, [category, searchQuery]);
+
+  const filteredScholarships = scholarships
     .filter((s) => {
       if (selectedGrade.length > 0) {
         return s.conditions.grade?.some((g) => selectedGrade.includes(g));
@@ -45,6 +63,14 @@ export default function ListPage({ category, onScholarshipClick }: ListPageProps
       setter([...current, value]);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-gray-600">로딩 중...</div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -80,6 +106,16 @@ export default function ListPage({ category, onScholarshipClick }: ListPageProps
           </div>
 
           <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">검색</label>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="장학금 제목 검색..."
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              />
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">정렬</label>
               <div className="flex gap-2 flex-wrap">

@@ -128,6 +128,7 @@ export default function PersonalizedBanner({ studentId }: PersonalizedBannerProp
       <ResumeWriteModal
         isOpen={isWriteModalOpen}
         onClose={() => setIsWriteModalOpen(false)}
+        studentId={studentId}
       />
     </div>
   );

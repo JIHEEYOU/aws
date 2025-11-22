@@ -1,6 +1,7 @@
 import { ArrowLeft, Calendar, Building2, DollarSign, ExternalLink, Bookmark, Share2, Award, Trophy, CheckCircle2, XCircle } from 'lucide-react';
-import { useState } from 'react';
-import { mockScholarships } from '../data/mockData';
+import { useState, useEffect } from 'react';
+import { getScholarshipDetail } from '../api/scholarships';
+import { Scholarship } from '../types/scholarship';
 import ApplicationMethodModal from '../components/ApplicationMethodModal';
 import ResumeUploadModal from '../components/ResumeUploadModal';
 
@@ -11,9 +12,25 @@ interface DetailPageProps {
 }
 
 export default function DetailPage({ scholarshipId, onBack, studentId }: DetailPageProps) {
-  const scholarship = mockScholarships.find((s) => s.id === scholarshipId);
+  const [scholarship, setScholarship] = useState<Scholarship | null>(null);
+  const [loading, setLoading] = useState(true);
   const [isMethodModalOpen, setIsMethodModalOpen] = useState(false);
   const [isResumeModalOpen, setIsResumeModalOpen] = useState(false);
+
+  useEffect(() => {
+    async function fetchScholarshipDetail() {
+      try {
+        setLoading(true);
+        const data = await getScholarshipDetail(scholarshipId);
+        setScholarship(data);
+      } catch (error) {
+        console.error('장학금 상세 정보 조회 실패:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchScholarshipDetail();
+  }, [scholarshipId]);
 
   const handleSelectMethod = (method: 'resume' | 'form') => {
     if (method === 'resume') {
@@ -22,6 +39,14 @@ export default function DetailPage({ scholarshipId, onBack, studentId }: DetailP
       console.log('입력폼 작성 선택');
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-gray-600">로딩 중...</div>
+      </div>
+    );
+  }
 
   if (!scholarship) {
     return (

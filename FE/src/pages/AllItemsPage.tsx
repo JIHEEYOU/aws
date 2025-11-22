@@ -1,6 +1,7 @@
 import { ArrowLeft, Search, Eye } from 'lucide-react';
-import { mockScholarships } from '../data/mockData';
-import { useState } from 'react';
+import { getScholarships } from '../api/scholarships';
+import { Scholarship } from '../types/scholarship';
+import { useState, useEffect } from 'react';
 
 interface AllItemsPageProps {
   onScholarshipClick: (id: string) => void;
@@ -8,15 +9,28 @@ interface AllItemsPageProps {
 }
 
 export default function AllItemsPage({ onScholarshipClick, onBack }: AllItemsPageProps) {
+  const [scholarships, setScholarships] = useState<Scholarship[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'scholarship' | 'competition'>('all');
 
-  const filteredScholarships = mockScholarships.filter((item) => {
-    const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.summary.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
-    return matchesSearch && matchesCategory;
-  });
+  useEffect(() => {
+    async function fetchScholarships() {
+      try {
+        setLoading(true);
+        const category = categoryFilter === 'all' ? 'all' : categoryFilter;
+        const data = await getScholarships({ category, search: searchTerm });
+        setScholarships(data);
+      } catch (error) {
+        console.error('장학금 목록 조회 실패:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchScholarships();
+  }, [categoryFilter, searchTerm]);
+
+  const filteredScholarships = scholarships;
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -25,6 +39,14 @@ export default function AllItemsPage({ onScholarshipClick, onBack }: AllItemsPag
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}.${month}.${day}`;
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-gray-600">로딩 중...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -87,7 +109,7 @@ export default function AllItemsPage({ onScholarshipClick, onBack }: AllItemsPag
                   className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
                 >
                   <td className="py-4 px-4 text-center text-sm text-gray-700">
-                    {item.category === 'scholarship' ? '장학' : '공지'}
+                    {filteredScholarships.length - index}
                   </td>
                   <td className="py-4 px-4 text-center text-sm text-gray-700">
                     {item.category === 'scholarship' ? '장학' : '공지'}

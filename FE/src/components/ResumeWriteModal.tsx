@@ -1,25 +1,52 @@
 import { X, FileText } from 'lucide-react';
 import { useState } from 'react';
+import { writeResume } from '../api/resume';
 
 interface ResumeWriteModalProps {
   isOpen: boolean;
   onClose: () => void;
+  studentId: string;
 }
 
-export default function ResumeWriteModal({ isOpen, onClose }: ResumeWriteModalProps) {
+export default function ResumeWriteModal({ isOpen, onClose, studentId }: ResumeWriteModalProps) {
   const [name, setName] = useState('');
   const [major, setMajor] = useState('');
   const [grade, setGrade] = useState('');
   const [spec, setSpec] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
-  const handleSubmit = () => {
-    console.log('Resume form submitted', { name, major, grade, spec });
-    onClose();
+  const handleSubmit = async () => {
+    if (!name || !major || !grade || !spec) return;
+
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    try {
+      await writeResume(studentId, {
+        name,
+        major,
+        grade,
+        certificates: spec,
+      });
+      // 성공 시 폼 초기화 및 모달 닫기
+      setName('');
+      setMajor('');
+      setGrade('');
+      setSpec('');
+      onClose();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : '이력서 작성에 실패했습니다. 다시 시도해 주세요.';
+      setErrorMessage(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const isDisabled = !name || !major || !grade || !spec;
+  const isDisabled = !name || !major || !grade || !spec || isSubmitting;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -45,6 +72,11 @@ export default function ResumeWriteModal({ isOpen, onClose }: ResumeWriteModalPr
         </div>
 
         <div className="p-6 space-y-4">
+          {errorMessage && (
+            <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
+              {errorMessage}
+            </div>
+          )}
           <div className="space-y-2">
             <label className="text-sm font-semibold text-gray-800">이름</label>
             <input
@@ -52,6 +84,7 @@ export default function ResumeWriteModal({ isOpen, onClose }: ResumeWriteModalPr
               onChange={(e) => setName(e.target.value)}
               placeholder="예: 홍길동"
               className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+              disabled={isSubmitting}
             />
           </div>
           <div className="space-y-2">
@@ -61,6 +94,7 @@ export default function ResumeWriteModal({ isOpen, onClose }: ResumeWriteModalPr
               onChange={(e) => setMajor(e.target.value)}
               placeholder="예: 컴퓨터공학과"
               className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+              disabled={isSubmitting}
             />
           </div>
           <div className="space-y-2">
@@ -70,6 +104,7 @@ export default function ResumeWriteModal({ isOpen, onClose }: ResumeWriteModalPr
               onChange={(e) => setGrade(e.target.value)}
               placeholder="예: 3학년"
               className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+              disabled={isSubmitting}
             />
           </div>
           <div className="space-y-2">
@@ -80,6 +115,7 @@ export default function ResumeWriteModal({ isOpen, onClose }: ResumeWriteModalPr
               placeholder="자격증을 입력하세요"
               rows={4}
               className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 resize-none"
+              disabled={isSubmitting}
             />
           </div>
         </div>
@@ -100,7 +136,7 @@ export default function ResumeWriteModal({ isOpen, onClose }: ResumeWriteModalPr
                 : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl hover:scale-105'
             }`}
           >
-            작성 완료
+            {isSubmitting ? '작성 중...' : '작성 완료'}
           </button>
         </div>
       </div>

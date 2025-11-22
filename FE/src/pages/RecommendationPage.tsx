@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import ScholarshipCard from '../components/ScholarshipCard';
-import { mockScholarships } from '../data/mockData';
+import { getRecommendedScholarships } from '../api/scholarships';
+import { Scholarship } from '../types/scholarship';
 import { Sparkles, CheckCircle2, TrendingUp } from 'lucide-react';
 
 interface RecommendationPageProps {
@@ -9,6 +10,8 @@ interface RecommendationPageProps {
 
 export default function RecommendationPage({ onScholarshipClick }: RecommendationPageProps) {
   const [step, setStep] = useState<'form' | 'result'>('form');
+  const [loading, setLoading] = useState(false);
+  const [recommendedScholarships, setRecommendedScholarships] = useState<Scholarship[]>([]);
   const [formData, setFormData] = useState({
     grade: '',
     major: '',
@@ -17,9 +20,29 @@ export default function RecommendationPage({ onScholarshipClick }: Recommendatio
     certificates: [] as string[],
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setStep('result');
+    
+    if (!formData.grade || !formData.major) {
+      alert('학년과 학과를 선택해주세요.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const results = await getRecommendedScholarships(
+        formData.major,
+        formData.grade,
+        formData.certificates,
+      );
+      setRecommendedScholarships(results);
+      setStep('result');
+    } catch (error) {
+      console.error('추천 장학금 조회 실패:', error);
+      alert('추천 장학금을 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggleCertificate = (cert: string) => {
@@ -31,7 +54,6 @@ export default function RecommendationPage({ onScholarshipClick }: Recommendatio
     });
   };
 
-  const recommendedScholarships = mockScholarships.slice(0, 4);
   const totalAmount = recommendedScholarships.reduce((sum, s) => {
     const amount = parseInt(s.amount.replace(/[^0-9]/g, '')) || 0;
     return sum + amount;
@@ -153,11 +175,11 @@ export default function RecommendationPage({ onScholarshipClick }: Recommendatio
 
           <button
             type="submit"
-            disabled={!formData.grade || !formData.major || !formData.gpa || !formData.income}
+            disabled={!formData.grade || !formData.major || loading}
             className="w-full mt-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             <Sparkles className="w-5 h-5" />
-            <span>AI 추천 받기</span>
+            <span>{loading ? '추천 중...' : 'AI 추천 받기'}</span>
           </button>
         </form>
       </div>
