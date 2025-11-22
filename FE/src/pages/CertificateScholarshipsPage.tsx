@@ -1,0 +1,140 @@
+import { ArrowLeft, Award, Search, Eye } from 'lucide-react';
+import { mockScholarships } from '../data/mockData';
+import { useState } from 'react';
+
+interface CertificateScholarshipsPageProps {
+  onScholarshipClick: (id: string) => void;
+  onBack: () => void;
+}
+
+export default function CertificateScholarshipsPage({ onScholarshipClick, onBack }: CertificateScholarshipsPageProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const certificateScholarships = mockScholarships.filter(
+    (scholarship) => scholarship.conditions.certificates && scholarship.conditions.certificates.length > 0
+  );
+
+  const filteredScholarships = certificateScholarships.filter((item) => {
+    const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         item.summary.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
+  });
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const year = date.getFullYear().toString().slice(2);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}.${month}.${day}`;
+  };
+
+  return (
+    <div className="space-y-6">
+      <button
+        onClick={onBack}
+        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+      >
+        <ArrowLeft className="w-5 h-5" />
+        <span className="font-semibold">돌아가기</span>
+      </button>
+
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-md">
+            <Award className="w-6 h-6 text-white" />
+          </div>
+          <h1 className="text-3xl font-black text-gray-900">자격증 장학금</h1>
+        </div>
+
+        <div className="flex gap-4 mb-6">
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              placeholder="검색어를 입력해 주세요"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+            />
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          </div>
+
+          <button className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold">
+            검색
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-t-2 border-b border-gray-300">
+                <th className="py-4 px-4 text-center text-sm font-bold text-gray-700 w-24">번호</th>
+                <th className="py-4 px-4 text-center text-sm font-bold text-gray-700 w-32">분류</th>
+                <th className="py-4 px-4 text-left text-sm font-bold text-gray-700">제목</th>
+                <th className="py-4 px-4 text-center text-sm font-bold text-gray-700 w-32">작성자</th>
+                <th className="py-4 px-4 text-center text-sm font-bold text-gray-700 w-24">작성일</th>
+                <th className="py-4 px-4 text-center text-sm font-bold text-gray-700 w-20">조회</th>
+                <th className="py-4 px-4 text-center text-sm font-bold text-gray-700 w-20">바뀜</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredScholarships.map((item, index) => (
+                <tr
+                  key={item.id}
+                  onClick={() => onScholarshipClick(item.id)}
+                  className="border-b border-gray-200 hover:bg-blue-50 cursor-pointer transition-colors"
+                >
+                  <td className="py-4 px-4 text-center text-sm text-gray-700">
+                    {filteredScholarships.length - index}
+                  </td>
+                  <td className="py-4 px-4 text-center text-sm text-gray-700">
+                    자격증
+                  </td>
+                  <td className="py-4 px-4 text-left">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-900 hover:underline">
+                        {item.title}
+                      </span>
+                      {item.isNew && (
+                        <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded">
+                          NEW
+                        </span>
+                      )}
+                    </div>
+                    {item.conditions.certificates && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {item.conditions.certificates.map((cert, idx) => (
+                          <span key={idx} className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">
+                            {cert}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </td>
+                  <td className="py-4 px-4 text-center text-sm text-gray-700">
+                    {item.organization}
+                  </td>
+                  <td className="py-4 px-4 text-center text-sm text-gray-700">
+                    {formatDate(item.deadline)}
+                  </td>
+                  <td className="py-4 px-4 text-center text-sm text-gray-700">
+                    {item.viewCount.toLocaleString()}
+                  </td>
+                  <td className="py-4 px-4 text-center">
+                    <Eye className="w-4 h-4 text-gray-400 mx-auto" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {filteredScholarships.length === 0 && (
+          <div className="text-center py-16">
+            <Award className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 text-lg">자격증 장학금이 없습니다</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,133 @@
+import { ArrowLeft, Search, Eye } from 'lucide-react';
+import { mockScholarships } from '../data/mockData';
+import { useState } from 'react';
+
+interface AllItemsPageProps {
+  onScholarshipClick: (id: string) => void;
+  onBack: () => void;
+}
+
+export default function AllItemsPage({ onScholarshipClick, onBack }: AllItemsPageProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'scholarship' | 'competition'>('all');
+
+  const filteredScholarships = mockScholarships.filter((item) => {
+    const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         item.summary.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const year = date.getFullYear().toString().slice(2);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}.${month}.${day}`;
+  };
+
+  return (
+    <div className="space-y-6">
+      <button
+        onClick={onBack}
+        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+      >
+        <ArrowLeft className="w-5 h-5" />
+        <span className="font-semibold">돌아가기</span>
+      </button>
+
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <h1 className="text-3xl font-black text-gray-900 mb-6">공지사항</h1>
+
+        <div className="flex gap-4 mb-6">
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value as 'all' | 'scholarship' | 'competition')}
+            className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="all">전체</option>
+            <option value="scholarship">장학금</option>
+            <option value="competition">공모전</option>
+          </select>
+
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              placeholder="검색어를 입력해 주세요"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+            />
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          </div>
+
+          <button className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-semibold">
+            검색
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-t-2 border-b border-gray-300">
+                <th className="py-4 px-4 text-center text-sm font-bold text-gray-700 w-24">번호</th>
+                <th className="py-4 px-4 text-center text-sm font-bold text-gray-700 w-32">제목</th>
+                <th className="py-4 px-4 text-left text-sm font-bold text-gray-700">제목</th>
+                <th className="py-4 px-4 text-center text-sm font-bold text-gray-700 w-32">작성자</th>
+                <th className="py-4 px-4 text-center text-sm font-bold text-gray-700 w-24">작성일</th>
+                <th className="py-4 px-4 text-center text-sm font-bold text-gray-700 w-20">조회</th>
+                <th className="py-4 px-4 text-center text-sm font-bold text-gray-700 w-20">바뀜</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredScholarships.map((item, index) => (
+                <tr
+                  key={item.id}
+                  onClick={() => onScholarshipClick(item.id)}
+                  className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
+                >
+                  <td className="py-4 px-4 text-center text-sm text-gray-700">
+                    {item.category === 'scholarship' ? '장학' : '공지'}
+                  </td>
+                  <td className="py-4 px-4 text-center text-sm text-gray-700">
+                    {item.category === 'scholarship' ? '장학' : '공지'}
+                  </td>
+                  <td className="py-4 px-4 text-left">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-900 hover:underline">
+                        {item.title}
+                      </span>
+                      {item.isNew && (
+                        <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded">
+                          NEW
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-4 px-4 text-center text-sm text-gray-700">
+                    {item.organization}
+                  </td>
+                  <td className="py-4 px-4 text-center text-sm text-gray-700">
+                    {formatDate(item.deadline)}
+                  </td>
+                  <td className="py-4 px-4 text-center text-sm text-gray-700">
+                    {item.viewCount.toLocaleString()}
+                  </td>
+                  <td className="py-4 px-4 text-center">
+                    <Eye className="w-4 h-4 text-gray-400 mx-auto" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {filteredScholarships.length === 0 && (
+          <div className="text-center py-16">
+            <p className="text-gray-500 text-lg">검색 결과가 없습니다</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
