@@ -6,10 +6,10 @@ from typing import Any, Dict, List, Literal, Optional, Set
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
-from .storage import get_resume_store, ResumeStore
+from .storage import get_resume_store, get_local_resume_store, ResumeStore, LocalResumeStore
 
 app = FastAPI(title='Scholarship & Resume API', version='1.0.0')
 
@@ -141,8 +141,9 @@ async def upload_resume(
     student_id: str,
     file: UploadFile = File(...),
     meta: str = Form('{}'),
-    store: ResumeStore = Depends(get_resume_store),
+    store: Optional[ResumeStore] = Depends(get_resume_store),
 ) -> ResumeResponse:
+    """PDF 파일을 업로드하고 파싱하여 저장"""
     if file.content_type != 'application/pdf':
         raise HTTPException(status_code=400, detail='Only PDF uploads are allowed.')
 
@@ -155,21 +156,107 @@ async def upload_resume(
     if not content:
         raise HTTPException(status_code=400, detail='Uploaded file is empty.')
 
-    record = store.save_resume(student_id, file.filename or 'resume.pdf', content, meta_dict)
+    # TODO: PDF 파싱 로직 구현
+    # parsed_data = parse_pdf(content)
+    # meta_dict에 파싱된 데이터 추가 가능
+    
+    meta_dict['source'] = 'upload'  # 업로드 방식 표시
+    
+    # AWS 리소스가 있으면 사용, 없으면 로컬 저장소 사용
+    if store is not None:
+        record = store.save_resume(student_id, file.filename or 'resume.pdf', content, meta_dict)
+    else:
+        local_store = get_local_resume_store()
+        record = local_store.save_resume(student_id, file.filename or 'resume.pdf', content, meta_dict)
+    
+    return ResumeResponse(**record)  # type: ignore[arg-type]
+
+
+class ResumeWriteRequest(BaseModel):
+    name: str
+    major: str
+    grade: str
+    certificates: str  # 자격증 텍스트
+
+
+@app.post('/api/students/{student_id}/resume/write', response_model=ResumeResponse)
+async def write_resume(
+    student_id: str,
+    data: ResumeWriteRequest,
+    store: Optional[ResumeStore] = Depends(get_resume_store),
+) -> ResumeResponse:
+    """입력 폼으로 이력서를 작성하고 파싱하여 저장"""
+    # TODO: 입력 데이터 파싱 로직 구현
+    # parsed_data = parse_resume_form(data)
+    
+    # 입력 데이터를 메타데이터로 저장
+    meta_dict: Dict[str, Any] = {
+        'source': 'write',  # 작성 방식 표시
+        'name': data.name,
+        'major': data.major,
+        'grade': data.grade,
+        'certificates': data.certificates,
+    }
+    
+    # 입력 폼으로 작성한 경우 PDF 파일이 없으므로 빈 PDF 생성 또는 텍스트만 저장
+    # 여기서는 메타데이터만 저장하는 방식으로 구현
+    # 실제로는 입력 데이터를 기반으로 PDF를 생성하거나, 텍스트 형태로 저장할 수 있음
+    
+    # 로컬 저장소 사용 (입력 폼 작성은 파일이 없으므로)
+    local_store = get_local_resume_store()
+    
+    # 빈 PDF 생성 (또는 텍스트만 저장)
+    # 실제 구현에서는 입력 데이터를 기반으로 PDF를 생성해야 함
+    from uuid import uuid4
+    resume_id = uuid4().hex
+    stored_filename = f"{resume_id}.pdf"
+    
+    # 임시로 빈 바이트 배열 사용 (실제로는 입력 데이터를 PDF로 변환)
+    empty_pdf_content = b'%PDF-1.4\n'  # 최소한의 PDF 헤더
+    
+    record = local_store.save_resume(
+        student_id,
+        f"resume_{data.name}.pdf",
+        empty_pdf_content,
+        meta_dict
+    )
+    
     return ResumeResponse(**record)  # type: ignore[arg-type]
 
 
 @app.get('/api/students/{student_id}/resume', response_model=ResumeResponse)
-async def get_resume(student_id: str, store: ResumeStore = Depends(get_resume_store)) -> ResumeResponse:
-    record = store.get_resume(student_id)
-    return ResumeResponse(**record)
+async def get_resume(student_id: str, store: Optional[ResumeStore] = Depends(get_resume_store)) -> ResumeResponse:
+    try:
+        # AWS 리소스가 있으면 사용, 없으면 로컬 저장소 사용
+        if store is not None:
+            record = store.get_resume(student_id)
+        else:
+            local_store = get_local_resume_store()
+            record = local_store.get_resume(student_id)
+        return ResumeResponse(**record)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        # 예외 발생 시 404 반환
+        raise HTTPException(status_code=404, detail='Resume not found for this student.')
 
 
 @app.get('/api/resume-files/{student_id}/{stored_filename}')
-async def download_resume(student_id: str, stored_filename: str, store: ResumeStore = Depends(get_resume_store)):
-    stream = store.get_resume_stream(student_id, stored_filename)
-    headers = {'Content-Disposition': f'attachment; filename="{stored_filename}"'}
-    return StreamingResponse(stream, media_type='application/pdf', headers=headers)
+async def download_resume(student_id: str, stored_filename: str, store: Optional[ResumeStore] = Depends(get_resume_store)):
+    # AWS 리소스가 있으면 사용, 없으면 로컬 저장소 사용
+    if store is not None:
+        stream = store.get_resume_stream(student_id, stored_filename)
+        headers = {'Content-Disposition': f'attachment; filename="{stored_filename}"'}
+        return StreamingResponse(stream, media_type='application/pdf', headers=headers)
+    else:
+        local_store = get_local_resume_store()
+        file_path = local_store.get_resume_stream(student_id, stored_filename)
+        return FileResponse(
+            path=str(file_path),
+            media_type='application/pdf',
+            filename=stored_filename,
+            headers={'Content-Disposition': f'attachment; filename="{stored_filename}"'}
+        )
 
 
 @app.get('/api/scholarships', response_model=List[Scholarship])

@@ -1,0 +1,14 @@
+{
+  "student-515f693e-726b-4d67-94d9-3bb93fed1845": {
+    "studentId": "student-515f693e-726b-4d67-94d9-3bb93fed1845",
+    "resumeId": "13d2d916390b49cc882e9210474d23d3",
+    "fileName": "AWS과정1_수료증.pdf",
+    "url": "/api/resume-files/student-515f693e-726b-4d67-94d9-3bb93fed1845/13d2d916390b49cc882e9210474d23d3.pdf",
+    "storageKey": "student-515f693e-726b-4d67-94d9-3bb93fed1845/13d2d916390b49cc882e9210474d23d3.pdf",
+    "uploadedAt": "2025-11-22T20:39:39.121355+00:00",
+    "meta": {
+      "method": "upload",
+      "version": "v1"
+    }
+  }
+}
